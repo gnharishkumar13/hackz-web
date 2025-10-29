@@ -1,0 +1,41 @@
+package templates
+
+templ Layout(title string) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<title>{ title }</title>
+			<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+			<script src="https://cdn.tailwindcss.com"></script>
+		</head>
+		<body class="bg-gray-900 text-gray-100">
+			<nav class="bg-gray-800 border-b border-gray-700 px-6 py-4">
+				<div class="flex items-center justify-between">
+					<h1 class="text-2xl font-bold text-blue-400">Team Environment Dashboard</h1>
+					<div class="flex items-center gap-3">
+						<label for="env-selector" class="text-gray-400 text-sm font-medium">Environment:</label>
+						<select 
+							id="env-selector"
+							name="environment"
+							class="bg-gray-700 border border-gray-600 text-gray-100 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 px-4 py-2 cursor-pointer"
+							hx-get="/api/switch-environment"
+							hx-trigger="change"
+							hx-target="#dashboard-content"
+							hx-swap="innerHTML"
+						>
+							<option value="production" selected>Production</option>
+							<option value="staging">Staging</option>
+							<option value="development">Development</option>
+							<option value="qa">QA</option>
+						</select>
+					</div>
+				</div>
+			</nav>
+			<main class="container mx-auto px-6 py-8">
+				{ children... }
+			</main>
+		</body>
+	</html>
+}

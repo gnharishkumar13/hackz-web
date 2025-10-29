@@ -1,0 +1,383 @@
+package templates
+
+import "team-dashboard/internal/models"
+
+templ Dashboard(data models.DashboardData) {
+	@Layout("Team Dashboard") {
+		<div id="dashboard-content">
+			@DashboardContent(data)
+		</div>
+	}
+}
+
+templ DashboardContent(data models.DashboardData) {
+	<div>
+		<div class="mb-4 flex items-center justify-between">
+			<div class="bg-gray-800 rounded-lg px-4 py-2 inline-flex items-center gap-3">
+				<span class="text-gray-400 text-sm">Environment:</span>
+				<select 
+					class="bg-gray-700 text-white px-3 py-1 rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
+					hx-get="/api/switch-environment"
+					hx-target="#dashboard-content"
+					hx-swap="innerHTML"
+					hx-trigger="change"
+					name="environment">
+					<option value="production" selected?={ data.Environment == "production" }>Production</option>
+					<option value="staging" selected?={ data.Environment == "staging" }>Staging</option>
+					<option value="development" selected?={ data.Environment == "development" }>Development</option>
+					<option value="qa" selected?={ data.Environment == "qa" }>QA</option>
+				</select>
+				<span class="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+			</div>
+		</div>
+		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+			<!-- Kubernetes Metrics -->
+			<div class="bg-gray-800 rounded-lg shadow-lg p-6">
+				<h2 class="text-xl font-semibold mb-4 text-blue-300">Kubernetes Metrics</h2>
+				<div
+					hx-get={ "/api/k8s-metrics?environment=" + data.Environment }
+					hx-trigger="load, every 10s"
+					hx-swap="innerHTML"
+				>
+					@K8sMetrics(data.K8sMetrics)
+				</div>
+			</div>
+
+			<!-- Istio Service Mesh -->
+			<div class="bg-gray-800 rounded-lg shadow-lg p-6">
+				<h2 class="text-xl font-semibold mb-4 text-cyan-300">Istio Service Mesh</h2>
+				<div 
+					hx-get="/api/istio-metrics" 
+					hx-trigger="load, every 10s"
+					hx-swap="innerHTML"
+				>
+					@IstioMetrics(data.IstioMetrics)
+				</div>
+			</div>
+
+			<!-- Cost Data -->
+			<div class="bg-gray-800 rounded-lg shadow-lg p-6">
+				<h2 class="text-xl font-semibold mb-4 text-green-300">Cost Overview</h2>
+				<div 
+					hx-get="/api/costs" 
+					hx-trigger="load, every 60s"
+					hx-swap="innerHTML"
+				>
+					@CostMetrics(data.CostMetrics)
+				</div>
+			</div>
+
+			<!-- Database Info -->
+			<div class="bg-gray-800 rounded-lg shadow-lg p-6">
+				<h2 class="text-xl font-semibold mb-4 text-purple-300">Database Metrics</h2>
+				<div 
+					hx-get="/api/db-metrics" 
+					hx-trigger="load, every 15s"
+					hx-swap="innerHTML"
+				>
+					@DbMetrics(data.DbMetrics)
+				</div>
+			</div>
+
+			<!-- Concourse CI/CD -->
+			<div class="bg-gray-800 rounded-lg shadow-lg p-6">
+				<h2 class="text-xl font-semibold mb-4 text-pink-300">Concourse CI/CD</h2>
+				<div 
+					hx-get="/api/concourse-metrics" 
+					hx-trigger="load, every 30s"
+					hx-swap="innerHTML"
+				>
+					@ConcourseMetrics(data.ConcourseMetric)
+				</div>
+			</div>
+
+			<!-- Service Metrics - Per Service Pod Details -->
+			<div class="bg-gray-800 rounded-lg shadow-lg p-6 lg:col-span-2">
+				<h2 class="text-xl font-semibold mb-4 text-indigo-300">Service Pod Metrics</h2>
+				<div 
+					hx-get="/api/service-metrics" 
+					hx-trigger="load, every 15s"
+					hx-swap="innerHTML"
+				>
+					@ServiceMetrics(data.ServiceMetrics)
+				</div>
+			</div>
+
+			<!-- Grafana Dashboard - Infrastructure -->
+			<div class="bg-gray-800 rounded-lg shadow-lg p-6 lg:col-span-2">
+				<h2 class="text-xl font-semibold mb-4 text-orange-300">Infrastructure Metrics</h2>
+				<iframe 
+					src="http://localhost:3000/d/team-infra/team-infrastructure-metrics?orgId=1&kiosk&theme=dark"
+					class="w-full h-96 rounded border border-gray-700"
+					frameborder="0"
+				></iframe>
+			</div>
+			
+			<!-- Grafana Dashboard - Database -->
+			<div class="bg-gray-800 rounded-lg shadow-lg p-6 lg:col-span-2">
+				<h2 class="text-xl font-semibold mb-4 text-purple-300">Database Performance</h2>
+				<iframe
+					src="http://localhost:3000/d/db-perf/database-performance?orgId=1&kiosk&theme=dark"
+					class="w-full h-96 rounded border border-gray-700"
+					frameborder="0"
+				></iframe>
+			</div>
+
+			<!-- Spring Boot Admin -->
+			<div class="bg-gray-800 rounded-lg shadow-lg p-6 lg:col-span-2">
+				<h2 class="text-xl font-semibold mb-4 text-green-300">Spring Boot Admin</h2>
+				<iframe
+					src={ data.SpringBootAdminURL }
+					class="w-full h-96 rounded border border-gray-700"
+					frameborder="0"
+				></iframe>
+			</div>
+		</div>
+	</div>
+}
+
+templ K8sMetrics(metrics models.K8sMetrics) {
+	<div class="space-y-3">
+		if metrics.K8sClusterURL != "" || metrics.SplunkDashboardURL != "" || metrics.SplunkURL != "" {
+		 <div class="pb-2 mb-2 border-b border-gray-700 flex gap-4">
+		  if metrics.K8sClusterURL != "" {
+		   <a href={ templ.URL(metrics.K8sClusterURL) } target="_blank" class="text-blue-400 hover:underline text-sm">
+		    View Cluster Dashboard →
+		   </a>
+		  }
+		  if metrics.SplunkDashboardURL != "" {
+		   <a href={ templ.URL(metrics.SplunkDashboardURL) } target="_blank" class="text-orange-400 hover:underline text-sm">
+		    View Splunk Dashboard →
+		   </a>
+		  }
+		  if metrics.SplunkURL != "" {
+		   <a href={ templ.URL(metrics.SplunkURL + "/en-US/app/search/search?q=search%20error") } target="_blank" class="text-red-400 hover:underline text-sm">
+		   View Errors in Splunk →
+		  </a>
+		 }
+		 </div>
+		}
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">Services Running:</span>
+			<span class="font-mono text-lg text-cyan-400">{ metrics.ServicesCount }</span>
+		</div>
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">Running Pods:</span>
+			<span class="font-mono text-lg text-green-400">{ metrics.RunningPods }</span>
+		</div>
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">Failed Pods:</span>
+			if metrics.SplunkURL != "" {
+				<a href={ templ.URL(metrics.SplunkURL + "/en-US/app/search/search?q=search%20pod%20status%3DFailed") } target="_blank" class="font-mono text-lg text-red-400 hover:underline">
+					{ metrics.FailedPods }
+				</a>
+			} else {
+				<span class="font-mono text-lg text-red-400">{ metrics.FailedPods }</span>
+			}
+		</div>
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">Pod Errors:</span>
+			if metrics.SplunkURL != "" {
+				<a href={ templ.URL(metrics.SplunkURL + "/en-US/app/search/search?q=search%20pod%20error") } target="_blank" class="font-mono text-lg text-orange-400 hover:underline">
+					{ metrics.PodErrors }
+				</a>
+			} else {
+				<span class="font-mono text-lg text-orange-400">{ metrics.PodErrors }</span>
+			}
+		</div>
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">CPU Usage:</span>
+			<span class="font-mono text-lg text-yellow-400">{ metrics.TotalCPUUsage }</span>
+		</div>
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">CPU Utilization:</span>
+			<span class="font-mono text-lg">{ metrics.CPUUtilization }</span>
+		</div>
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">Memory Usage:</span>
+			<span class="font-mono text-lg text-cyan-400">{ metrics.TotalMemoryUsage }</span>
+		</div>
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">Memory Utilization:</span>
+			<span class="font-mono text-lg">{ metrics.MemoryUsage }</span>
+		</div>
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">4xx Errors:</span>
+			if metrics.SplunkURL != "" {
+				<a href={ templ.URL(metrics.SplunkURL + "/en-US/app/search/search?q=search%20status%3D4*") } target="_blank" class="font-mono text-lg text-yellow-400 hover:underline">
+					{ metrics.Errors4xx }
+				</a>
+			} else {
+				<span class="font-mono text-lg text-yellow-400">{ metrics.Errors4xx }</span>
+			}
+		</div>
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">5xx Errors:</span>
+			if metrics.SplunkURL != "" {
+				<a href={ templ.URL(metrics.SplunkURL + "/en-US/app/search/search?q=search%20status%3D5*") } target="_blank" class="font-mono text-lg text-red-400 hover:underline">
+					{ metrics.Errors5xx }
+				</a>
+			} else {
+				<span class="font-mono text-lg text-red-400">{ metrics.Errors5xx }</span>
+			}
+		</div>
+	</div>
+}
+
+templ CostMetrics(costs models.CostMetrics) {
+	<div class="space-y-3">
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">Daily Cost:</span>
+			<span class="font-mono text-lg">${ costs.DailyCost }</span>
+		</div>
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">Monthly Estimate:</span>
+			<span class="font-mono text-lg">${ costs.MonthlyEstimate }</span>
+		</div>
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">Top Service:</span>
+			<span class="font-mono text-lg">{ costs.TopService }</span>
+		</div>
+	</div>
+}
+
+templ IstioMetrics(metrics models.IstioMetrics) {
+	<div class="space-y-3">
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">Request Rate:</span>
+			<span class="font-mono text-lg">{ metrics.RequestRate }</span>
+		</div>
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">Success Rate:</span>
+			<span class="font-mono text-lg text-green-400">{ metrics.SuccessRate }</span>
+		</div>
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">P95 Latency:</span>
+			<span class="font-mono text-lg">{ metrics.P95Latency }</span>
+		</div>
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">Active Connections:</span>
+			<span class="font-mono text-lg">{ metrics.ActiveConnections }</span>
+		</div>
+	</div>
+}
+
+templ ServiceMetrics(services []models.ServiceMetric) {
+	<div class="space-y-6">
+		for _, service := range services {
+			<div class="border border-gray-700 rounded-lg p-4">
+				<div class="flex justify-between items-center mb-4">
+					<div>
+						<h3 class="text-lg font-semibold text-indigo-300">{ service.ServiceName }</h3>
+						if service.K8sClusterURL != "" {
+							<a href={ templ.URL(service.K8sClusterURL) } target="_blank" class="text-sm text-blue-400 hover:underline">
+								View in Kubernetes Dashboard →
+							</a>
+						}
+					</div>
+					<div class="text-right">
+						<div class="text-sm text-gray-400">Total Pods: <span class="text-white font-mono">{ service.TotalPods }</span></div>
+						<div class="text-sm text-gray-400">Running: <span class="text-green-400 font-mono">{ service.RunningPods }</span></div>
+					</div>
+				</div>
+				<div class="grid grid-cols-2 gap-4 mb-4">
+					<div class="bg-gray-900 rounded p-3">
+						<div class="text-sm text-gray-400">CPU Usage</div>
+						<div class="text-lg font-mono text-yellow-400">{ service.CPUUsage }</div>
+					</div>
+					<div class="bg-gray-900 rounded p-3">
+						<div class="text-sm text-gray-400">Memory Usage</div>
+						<div class="text-lg font-mono text-cyan-400">{ service.MemoryUsage }</div>
+					</div>
+				</div>
+				<div class="overflow-x-auto">
+					<table class="w-full text-sm">
+						<thead class="bg-gray-900">
+							<tr>
+								<th class="px-3 py-2 text-left text-gray-400">Pod Name</th>
+								<th class="px-3 py-2 text-left text-gray-400">Status</th>
+								<th class="px-3 py-2 text-left text-gray-400">CPU</th>
+								<th class="px-3 py-2 text-left text-gray-400">Memory</th>
+								<th class="px-3 py-2 text-left text-gray-400">Restarts</th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, pod := range service.Pods {
+								<tr class="border-t border-gray-700">
+									<td class="px-3 py-2 font-mono text-xs">{ pod.PodName }</td>
+									<td class="px-3 py-2">
+										if pod.Status == "Running" {
+											<span class="text-green-400">{ pod.Status }</span>
+										} else {
+											<span class="text-red-400">{ pod.Status }</span>
+										}
+									</td>
+									<td class="px-3 py-2 font-mono">{ pod.CPUUsage }</td>
+									<td class="px-3 py-2 font-mono">{ pod.MemoryUsage }</td>
+									<td class="px-3 py-2 font-mono">
+										if pod.Restarts != "0" {
+											<span class="text-yellow-400">{ pod.Restarts }</span>
+										} else {
+											<span>{ pod.Restarts }</span>
+										}
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		}
+	</div>
+}
+
+templ ConcourseMetrics(concourse models.ConcourseMetric) {
+	<div class="space-y-3">
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">Environment:</span>
+			<span class="font-mono text-lg">{ concourse.Environment }</span>
+		</div>
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">Last Build:</span>
+			<span class="font-mono text-lg">{ concourse.LastBuild }</span>
+		</div>
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">Build Status:</span>
+			if concourse.BuildStatus == "success" {
+				<span class="font-mono text-lg text-green-400">✓ { concourse.BuildStatus }</span>
+			} else if concourse.BuildStatus == "failed" {
+				<span class="font-mono text-lg text-red-400">✗ { concourse.BuildStatus }</span>
+			} else {
+				<span class="font-mono text-lg text-yellow-400">⟳ { concourse.BuildStatus }</span>
+			}
+		</div>
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">Last Deploy:</span>
+			<span class="font-mono text-lg">{ concourse.LastDeploy }</span>
+		</div>
+		if concourse.ConcourseURL != "" {
+			<div class="pt-2 border-t border-gray-700">
+				<a href={ templ.URL(concourse.ConcourseURL) } target="_blank" class="text-blue-400 hover:underline text-sm">
+					View in Concourse Dashboard →
+				</a>
+			</div>
+		}
+	</div>
+}
+
+templ DbMetrics(db models.DbMetrics) {
+	<div class="space-y-3">
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">Active Connections:</span>
+			<span class="font-mono text-lg">{ db.ActiveConnections }</span>
+		</div>
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">DB Size:</span>
+			<span class="font-mono text-lg">{ db.DatabaseSize }</span>
+		</div>
+		<div class="flex justify-between items-center">
+			<span class="text-gray-400">Slow Queries:</span>
+			<span class="font-mono text-lg">{ db.SlowQueries }</span>
+		</div>
+	</div>
+}
